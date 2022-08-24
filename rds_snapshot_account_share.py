@@ -16,7 +16,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def get_db_instances(write_file_path: str):
+def get_db_instances(write_file_path: str) -> None:
     logger.info("get list of db instances")
     with open(write_file_path, 'w') as writeFile:
         response = rds.describe_db_instances()
@@ -37,7 +37,7 @@ def get_snapshot_tags(snapshot_arn: str) -> str | str | None:
         return None
 
 
-def update_snapshot_tags(arn: str, tag_value: str):
+def update_snapshot_tags(arn: str, tag_value: str) -> None:
     logger.info("update snapshot tag value")
     rds.add_tags_to_resource(
         ResourceName=arn,
@@ -74,7 +74,7 @@ def snapshot_exist(snapshot: str) -> Any | None:
         return None
 
 
-def delete_latest_snapshot(latest_snapshot: str):
+def delete_latest_snapshot(latest_snapshot: str) -> None:
     logger.info("delete latest snapshot")
     check_snapshot_exist = snapshot_exist(latest_snapshot)
     if check_snapshot_exist is None:
@@ -88,7 +88,7 @@ def delete_latest_snapshot(latest_snapshot: str):
         logger.info("deleted latest snapshot complete")
 
 
-def copy_snapshot(source_snapshot: str, target_snapshot: str):
+def copy_snapshot(source_snapshot: str, target_snapshot: str) -> None:
     logger.info("copy snapshot")
 
     rds.copy_db_snapshot(
@@ -99,7 +99,7 @@ def copy_snapshot(source_snapshot: str, target_snapshot: str):
     logger.info("copy snapshot complete")
 
 
-def share_snapshot(target_snapshot: str, aws_shared_account: str):
+def share_snapshot(target_snapshot: str, aws_shared_account: str) -> None:
     logger.info("share snapshot to another account")
     rds.modify_db_snapshot_attribute(
         DBSnapshotIdentifier=target_snapshot,
