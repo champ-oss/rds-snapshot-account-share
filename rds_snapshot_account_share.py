@@ -115,7 +115,7 @@ def lambda_handler(event, context):
     # env variables requirement, used to share snapshot with another account
     aws_shared_account = os.environ['AWS_SHARED_ACCOUNT']
 
-    # get_db_instances("dbIdentifierList.csv")
+    get_db_instances("dbIdentifierList.csv")
     with open("dbIdentifierList.csv") as readFile:
         db_sources = csv.reader(readFile)
         for db_source in db_sources:
