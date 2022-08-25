@@ -111,10 +111,10 @@ def share_snapshot(target_snapshot: str, aws_shared_account: str) -> None:
     logger.info("share snapshot to another account complete")
 
 
-def lambda_handler(event, context, dbIdentifierList=None):
+def lambda_handler(event, context):
     # env variables requirement, used to share snapshot with another account
     aws_shared_account = os.environ['AWS_SHARED_ACCOUNT']
-    csv_file_path = "/tmp/" + dbIdentifierList.csv
+    csv_file_path = "/tmp/dbIdentifierList.csv"
 
     get_db_instances(csv_file_path)
     with open(csv_file_path) as readFile:
