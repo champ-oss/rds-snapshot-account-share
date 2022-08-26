@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import csv
 import logging
 import os
 import time
@@ -14,16 +13,6 @@ import boto3
 rds = boto3.client('rds')
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-
-
-def get_db_instances(write_file_path: str) -> None:
-    logger.info("get list of db instances")
-    with open(write_file_path, 'w') as writeFile:
-        response = rds.describe_db_instances()
-        for i in response['DBInstances']:
-            db_instance_name = i['DBInstanceIdentifier']
-            writeFile.write(db_instance_name)
-            writeFile.write("\n")
 
 
 def get_snapshot_tags(snapshot_arn: str) -> str | str | None:
@@ -51,16 +40,20 @@ def update_snapshot_tags(arn: str, tag_value: str) -> None:
     logger.info("update to snapshot tag value complete")
 
 
-def get_latest_snapshot(db_source: str) -> tuple[Any, Any]:
+def get_latest_snapshot(db_source: str) -> tuple[Any, Any] | None:
     logger.info(f"get latest snapshot of: {db_source}")
-    response = rds.describe_db_snapshots(DBInstanceIdentifier=db_source)
-    sorted_keys = sorted(response['DBSnapshots'], key=itemgetter('SnapshotCreateTime'), reverse=True)
-    snapshot_id = sorted_keys[0]['DBSnapshotIdentifier']
-    snapshot_arn = sorted_keys[0]['DBSnapshotArn']
+    try:
+        response = rds.describe_db_snapshots(DBInstanceIdentifier=db_source)
+        sorted_keys = sorted(response['DBSnapshots'], key=itemgetter('SnapshotCreateTime'), reverse=True)
+        snapshot_id = sorted_keys[0]['DBSnapshotIdentifier']
+        snapshot_arn = sorted_keys[0]['DBSnapshotArn']
 
-    logger.info(f"returned latest snapshot: {snapshot_id}")
-    logger.info(f"returned latest snapshot arn: {snapshot_arn}")
-    return snapshot_id, snapshot_arn
+        logger.info(f"returned latest snapshot: {snapshot_id}")
+        logger.info(f"returned latest snapshot arn: {snapshot_arn}")
+        return snapshot_id, snapshot_arn
+    except:
+        logger.info("latest snapshot could be in progress")
+        return
 
 
 def snapshot_exist(snapshot: str) -> Any | None:
@@ -114,34 +107,37 @@ def share_snapshot(target_snapshot: str, aws_shared_account: str) -> None:
 def lambda_handler(event, context):
     # env variables requirement, used to share snapshot with another account
     aws_shared_account = os.environ['AWS_SHARED_ACCOUNT']
-    csv_file_path = "/tmp/dbIdentifierList.csv"
 
-    get_db_instances(csv_file_path)
-    with open(csv_file_path) as readFile:
-        db_sources = csv.reader(readFile)
-        for db_source in db_sources:
-            # get latest snapshot from db
-            get_snapshot, snapshot_arn = get_latest_snapshot(db_source[0])
+    # get RDS instances
+    db_instance_list = list()
+    response = rds.describe_db_instances()
+    for i in response['DBInstances']:
+        db_instance_name = i['DBInstanceIdentifier']
+        db_instance_list.append(db_instance_name)
+    for db_source in db_instance_list:
+        # get latest snapshot from db
+        get_snapshot, snapshot_arn = get_latest_snapshot(db_source)
 
-            # check current tag on snapshot
-            check_tag_value = get_snapshot_tags(snapshot_arn)
-            print(check_tag_value)
-            # latest tag has been copied but not shared
-            if check_tag_value == "copy-in-progress":
-                # update tag before sharing with another account
-                update_snapshot_tags(snapshot_arn, "copy-complete")
-                # sharing snapshot with another account
-                share_snapshot(get_snapshot, aws_shared_account)
+        # check current tag on snapshot
+        check_tag_value = get_snapshot_tags(snapshot_arn)
 
-            # latest tag is copied and shared, return and
-            elif check_tag_value == "copy-complete":
-                logger.info("nothing to do, latest snapshot copied")
+        # latest tag has been copied but not shared
+        if check_tag_value == "copy-in-progress":
+            # update tag before sharing with another account
+            update_snapshot_tags(snapshot_arn, "copy-complete")
+            # sharing snapshot with another account
+            share_snapshot(get_snapshot, aws_shared_account)
 
-            # this is an automated tag, not tagged and needs to be copied
-            elif check_tag_value is None:
-                update_snapshot_tags(snapshot_arn, "copy-in-progress")
-                delete_latest_snapshot(db_source[0])
-                copy_snapshot(get_snapshot, db_source[0])
+        # latest tag is copied and shared, return and
+        elif check_tag_value == "copy-complete":
+            logger.info("nothing to do, latest snapshot copied")
 
-            else:
-                logger.warning("latest tag check failed")
+        # this is an automated tag, not tagged and needs to be copied
+        elif check_tag_value is None:
+            delete_latest_snapshot(db_source)
+            update_snapshot_tags(snapshot_arn, "copy-in-progress")
+            copy_snapshot(get_snapshot, db_source)
+
+        else:
+            logger.warning("latest tag check failed")
+    db_instance_list.clear()
