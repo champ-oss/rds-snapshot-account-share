@@ -40,16 +40,20 @@ def update_snapshot_tags(arn: str, tag_value: str) -> None:
     logger.info("update to snapshot tag value complete")
 
 
-def get_latest_snapshot(db_source: str) -> tuple[Any, Any]:
+def get_latest_snapshot(db_source: str) -> tuple[Any, Any] | None:
     logger.info(f"get latest snapshot of: {db_source}")
-    response = rds.describe_db_snapshots(DBInstanceIdentifier=db_source)
-    sorted_keys = sorted(response['DBSnapshots'], key=itemgetter('SnapshotCreateTime'), reverse=True)
-    snapshot_id = sorted_keys[0]['DBSnapshotIdentifier']
-    snapshot_arn = sorted_keys[0]['DBSnapshotArn']
+    try:
+        response = rds.describe_db_snapshots(DBInstanceIdentifier=db_source)
+        sorted_keys = sorted(response['DBSnapshots'], key=itemgetter('SnapshotCreateTime'), reverse=True)
+        snapshot_id = sorted_keys[0]['DBSnapshotIdentifier']
+        snapshot_arn = sorted_keys[0]['DBSnapshotArn']
 
-    logger.info(f"returned latest snapshot: {snapshot_id}")
-    logger.info(f"returned latest snapshot arn: {snapshot_arn}")
-    return snapshot_id, snapshot_arn
+        logger.info(f"returned latest snapshot: {snapshot_id}")
+        logger.info(f"returned latest snapshot arn: {snapshot_arn}")
+        return snapshot_id, snapshot_arn
+    except:
+        logger.info("latest snapshot could be in progress")
+        return
 
 
 def snapshot_exist(snapshot: str) -> Any | None:
