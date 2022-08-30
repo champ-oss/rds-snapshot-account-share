@@ -115,8 +115,11 @@ def lambda_handler(event, context):
         db_instance_name = i['DBInstanceIdentifier']
         db_instance_list.append(db_instance_name)
     for db_source in db_instance_list:
+        # add suffix to snapshot, not conflict with final snapshot in place
+        target_snapshot = db_source + "-latest"
+
         # get latest snapshot from db
-        get_snapshot, snapshot_arn = get_latest_snapshot(db_source)
+        get_snapshot, snapshot_arn = get_latest_snapshot(target_snapshot)
 
         # check current tag on snapshot
         check_tag_value = get_snapshot_tags(snapshot_arn)
@@ -134,9 +137,9 @@ def lambda_handler(event, context):
 
         # this is an automated tag, not tagged and needs to be copied
         elif check_tag_value is None:
-            delete_latest_snapshot(db_source)
+            delete_latest_snapshot(target_snapshot)
             update_snapshot_tags(snapshot_arn, "copy-in-progress")
-            copy_snapshot(get_snapshot, db_source)
+            copy_snapshot(get_snapshot, target_snapshot)
 
         else:
             logger.warning("latest tag check failed")
