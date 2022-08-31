@@ -81,13 +81,13 @@ def delete_latest_snapshot(latest_snapshot: str) -> None:
         logger.info("deleted latest snapshot complete")
 
 
-def copy_snapshot(source_snapshot: str, target_snapshot: str, ksm_key_id: str) -> None:
+def copy_snapshot(source_snapshot: str, target_snapshot: str, kms_key_id: str) -> None:
     logger.info("copy snapshot")
 
     rds.copy_db_snapshot(
         SourceDBSnapshotIdentifier=source_snapshot,
         TargetDBSnapshotIdentifier=target_snapshot,
-        KmsKeyId=ksm_key_id,
+        KmsKeyId=kms_key_id,
         CopyTags=True
     )
     logger.info("copy snapshot complete")
