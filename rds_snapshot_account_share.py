@@ -81,12 +81,13 @@ def delete_latest_snapshot(latest_snapshot: str) -> None:
         logger.info("deleted latest snapshot complete")
 
 
-def copy_snapshot(source_snapshot: str, target_snapshot: str) -> None:
+def copy_snapshot(source_snapshot: str, target_snapshot: str, kms_key_id: str) -> None:
     logger.info("copy snapshot")
 
     rds.copy_db_snapshot(
         SourceDBSnapshotIdentifier=source_snapshot,
         TargetDBSnapshotIdentifier=target_snapshot,
+        KmsKeyId=kms_key_id,
         CopyTags=True
     )
     logger.info("copy snapshot complete")
@@ -107,6 +108,7 @@ def share_snapshot(target_snapshot: str, aws_shared_account: str) -> None:
 def lambda_handler(event, context):
     # env variables requirement, used to share snapshot with another account
     aws_shared_account = os.environ['AWS_SHARED_ACCOUNT']
+    kms_key_id = os.environ['KMS_KEY_ID']
 
     # get RDS instances
     db_instance_list = list()
@@ -139,7 +141,7 @@ def lambda_handler(event, context):
         elif check_tag_value is None:
             delete_latest_snapshot(target_snapshot)
             update_snapshot_tags(snapshot_arn, "copy-in-progress")
-            copy_snapshot(get_snapshot, target_snapshot)
+            copy_snapshot(get_snapshot, target_snapshot, kms_key_id)
 
         else:
             logger.warning("latest tag check failed")
