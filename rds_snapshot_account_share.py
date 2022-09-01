@@ -121,7 +121,7 @@ def lambda_handler(event, context):
         target_snapshot = db_source + "-latest"
 
         # get latest snapshot from db
-        get_snapshot, snapshot_arn = get_latest_snapshot(target_snapshot)
+        get_snapshot, snapshot_arn = get_latest_snapshot(db_source)
 
         # check current tag on snapshot
         check_tag_value = get_snapshot_tags(snapshot_arn)
