@@ -95,53 +95,27 @@ def get_latest_cluster_snapshot(db_source: str) -> tuple[Any, Any] | None:
         return
 
 
-def snapshot_exist(snapshot: str) -> Any | None:
-    try:
-        logger.info("checking to see if snapshot exist or not")
-        response = rds.describe_db_snapshots(DBSnapshotIdentifier=snapshot)
-        logger.info(f"returned latest snapshot: {response}")
-        return response
-    except (Exception,):
-        return None
-
-
 def delete_latest_snapshot(latest_snapshot: str) -> None:
     logger.info("delete latest snapshot")
-    check_snapshot_exist = snapshot_exist(latest_snapshot)
-    if check_snapshot_exist is None:
-        logger.info("latest doesnt exist for delete")
-
-    else:
+    try:
         rds.delete_db_snapshot(
             DBSnapshotIdentifier=latest_snapshot,
         )
         time.sleep(5)
         logger.info("deleted latest snapshot complete")
-
-
-def cluster_snapshot_exist(snapshot: str) -> Any | None:
-    try:
-        logger.info("checking to see if cluster snapshot exist or not")
-        response = rds.describe_db_cluster_snapshots(DBClusterIdentifier=snapshot)
-        logger.info(f"returned latest cluster snapshot: {response}")
-        return response
     except (Exception,):
         return None
 
-
 def delete_cluster_latest_snapshot(latest_snapshot: str) -> None:
     logger.info("delete latest snapshot")
-    check_cluster_snapshot_exist = cluster_snapshot_exist(latest_snapshot)
-    if check_cluster_snapshot_exist is None:
-        logger.info("latest cluster snapshot doesnt exist for delete")
-    elif not check_cluster_snapshot_exist['DBClusterSnapshots']:
-        logger.info("latest cluster snapshot doesnt exist for delete")
-    else:
+    try:
         rds.delete_db_cluster_snapshot(
             DBClusterSnapshotIdentifier=latest_snapshot,
         )
         time.sleep(5)
         logger.info("deleted latest cluster snapshot complete")
+    except (Exception,):
+            return None
 
 
 def copy_cluster_snapshot(source_snapshot: str, target_snapshot: str, kms_key_id: str) -> None:
@@ -254,7 +228,6 @@ def lambda_handler(event, context):
             logger.info("nothing to do, latest snapshot copied")
 
         # this is an automated tag, not tagged and needs to be copied
-
         elif check_tag_value is None:
             delete_cluster_latest_snapshot(target_snapshot)
             update_snapshot_tags(snapshot_arn, "copy-in-progress")
